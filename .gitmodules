@@ -1,6 +1,0 @@
-[submodule "proto"]
-	path = proto
-	url = C:/Users/pc/Desktop/projects/vscripts.online/cdn/proto
-
-
-# git -c protocol.file.allow=always submodule update --remote

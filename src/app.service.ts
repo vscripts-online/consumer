@@ -31,8 +31,6 @@ export class AppService implements OnModuleInit {
     this.consume_file_part_upload();
   }
 
-  async save_to_db_as_delayed_message() {}
-
   async consume_file_part_upload() {
     const queue = Queues.FILE_PART_UPLOAD;
     const channel = await this.rabbitmqClient.createChannel();
