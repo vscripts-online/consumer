@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  consumer:
+    restart: always
+    build:
+      context: .
+    environment:
+      RABBITMQ_URI: amqp://user:pass@host.docker.internal:5672
+      FILE_MS_URI: host.docker.internal:3131
+      SERVER_URI: http://localhost:3000
+      AUTHORIZATION: eyJhbGciOiJIUzI1NiJ9.eyJzZXJ2aWNlIjoiY29uc3VtZXIifQ.VA9TZeXcb52cEL7LE9BrprkTR4bjhcq47kdSZ8OUZuc

@@ -1,0 +1,5 @@
+[submodule "proto"]
+	path = proto
+	url = https://github.com/vscripts-online/proto.git
+
+# git submodule update --remote
