@@ -10,9 +10,20 @@ export const FILE_MS_URI = process.env.FILE_MS_URI;
 export const SERVER_URI = process.env.SERVER_URI;
 export const AUTHORIZATION = process.env.AUTHORIZATION;
 
+export const SECRET = process.env.SECRET;
+
+export const MAIL_SMTP_HOST = process.env.MAIL_SMTP_HOST;
+export const MAIL_SMTP_PORT = process.env.MAIL_SMTP_PORT;
+export const MAIL_SECURE = process.env.MAIL_SECURE;
+export const MAIL_USER = process.env.MAIL_USER;
+export const MAIL_PASS = process.env.MAIL_PASS;
+
 export const QUEUE_PROTO_PATH = path.resolve('./proto/queue.proto');
 export const ACCOUNT_PROTO_PATH = path.resolve('./proto/account.proto');
 export const FILE_PROTO_PATH = path.resolve('./proto/file.proto');
 
 const queue_root = protobufjs.loadSync(QUEUE_PROTO_PATH);
 export const FilePartUpload = queue_root.lookupType('queue.FilePartUpload');
+export const ForgotPasswordMail = queue_root.lookupType(
+  'queue.ForgotPasswordMail',
+);

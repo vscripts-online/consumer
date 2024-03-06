@@ -3,14 +3,29 @@ import { Metadata } from '@grpc/grpc-js';
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
 import type * as amqp from 'amqplib';
+import * as nodemailer from 'nodemailer';
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { AccountServiceHandlers } from 'pb/account/AccountService';
 import { UploadRequestDTO__Output } from 'pb/account/UploadRequestDTO';
 import { FileServiceHandlers } from 'pb/file/FileService';
 import { FilePartUpload__Output } from 'pb/queue/FilePartUpload';
+import { ForgotPasswordMail__Output } from 'pb/queue/ForgotPasswordMail';
 import { Queues } from 'pb/queue/Queues';
 import { Observable, ReplaySubject, firstValueFrom } from 'rxjs';
 import { client } from './client';
-import { FILE_MS_CLIENT, FilePartUpload, RABBITMQ_CLIENT } from './constant';
+import {
+  FILE_MS_CLIENT,
+  FilePartUpload,
+  ForgotPasswordMail,
+  MAIL_PASS,
+  MAIL_SECURE,
+  MAIL_SMTP_HOST,
+  MAIL_SMTP_PORT,
+  MAIL_USER,
+  RABBITMQ_CLIENT,
+  SECRET,
+} from './constant';
+import { generateEncodedVerifyCode } from './util';
 import { GrpcService } from './type';
 
 @Injectable()
@@ -24,11 +39,24 @@ export class AppService implements OnModuleInit {
   private accountServiceMS: GrpcService<AccountServiceHandlers>;
   private fileServiceMS: GrpcService<FileServiceHandlers>;
 
+  private transporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo>;
+
   onModuleInit() {
     this.accountServiceMS = this.file_ms_client.getService('AccountService');
     this.fileServiceMS = this.file_ms_client.getService('FileService');
 
+    this.transporter = nodemailer.createTransport({
+      host: MAIL_SMTP_HOST,
+      port: parseInt(MAIL_SMTP_PORT),
+      secure: Boolean(MAIL_SECURE),
+      auth: {
+        user: MAIL_USER,
+        pass: MAIL_PASS,
+      },
+    });
+
     this.consume_file_part_upload();
+    this.forgot_password_mail();
   }
 
   async consume_file_part_upload() {
@@ -37,6 +65,7 @@ export class AppService implements OnModuleInit {
     await channel.assertQueue(queue);
 
     channel.consume(queue, async (data) => {
+      console.log('consume consume_file_part_upload');
       const { name, offset, size, _id } = FilePartUpload.decode(
         data.content,
       ) as unknown as FilePartUpload__Output;
@@ -100,6 +129,34 @@ export class AppService implements OnModuleInit {
       );
 
       console.log(file_part);
+
+      channel.ack(data);
+    });
+  }
+
+  async forgot_password_mail() {
+    const queue = Queues.SEND_FORGOT_PASSWORD_EMAIL;
+    const channel = await this.rabbitmqClient.createChannel();
+    await channel.assertQueue(queue);
+
+    channel.consume(queue, async (data) => {
+      console.log('consume forgot_password_mail');
+      const { id, code, email } = ForgotPasswordMail.decode(
+        data.content,
+      ) as unknown as ForgotPasswordMail__Output;
+
+      const encoded_code = generateEncodedVerifyCode(id, code, SECRET);
+
+      console.log(id, email, code, encoded_code);
+
+      // const info = await this.transporter.sendMail({
+      //   from: MAIL_USER,
+      //   to: email,
+      //   subject: 'Forgot Password',
+      //   text: 'query: ' + encoded_code,
+      // });
+
+      // console.log('Message sent: %s', info.messageId);
 
       channel.ack(data);
     });
