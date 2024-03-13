@@ -12,7 +12,7 @@ COPY . .
 
 RUN npm ci
 
-RUN npm run build:proto
+RUN npm run proto
 
 RUN npm run build
 
