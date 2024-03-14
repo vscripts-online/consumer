@@ -18,6 +18,8 @@ services:
       MAIL_PASS: jxki evpn busu amyv
     networks:
       - cdn_cdn
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
 
 networks:
   cdn_cdn:
