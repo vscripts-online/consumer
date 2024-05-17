@@ -12,6 +12,8 @@ COPY . .
 
 RUN npm ci
 
+RUN apk add --no-cache git
+
 RUN npm run proto
 
 RUN npm run build
