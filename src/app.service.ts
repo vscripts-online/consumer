@@ -11,7 +11,6 @@ import { UploadResponseDTO__Output } from 'pb/account/UploadResponseDTO';
 import { FilePart__Output } from 'pb/file/FilePart';
 import { FileServiceHandlers } from 'pb/file/FileService';
 import { FilePartUpload__Output } from 'pb/queue/FilePartUpload';
-import { ForgotPasswordMail__Output } from 'pb/queue/ForgotPasswordMail';
 import { Queues } from 'pb/queue/Queues';
 import { Observable, ReplaySubject, firstValueFrom } from 'rxjs';
 import { client } from './client';
@@ -19,17 +18,14 @@ import {
   FILE_MS_CLIENT,
   FilePart,
   FilePartUpload,
-  ForgotPasswordMail,
   MAIL_PASS,
   MAIL_SECURE,
   MAIL_SMTP_HOST,
   MAIL_SMTP_PORT,
   MAIL_USER,
   RABBITMQ_CLIENT,
-  SECRET,
 } from './constant';
 import { GrpcService } from './type';
-import { generateEncodedVerifyCode } from './util';
 
 @Injectable()
 export class AppService implements OnModuleInit {
@@ -59,7 +55,6 @@ export class AppService implements OnModuleInit {
     });
 
     this.file_part_upload();
-    this.forgot_password_mail();
     this.delete_file();
   }
 
@@ -79,6 +74,23 @@ export class AppService implements OnModuleInit {
       }) as FilePartUpload__Output;
 
       const { name, offset, size, _id } = object;
+      console.log(_id);
+
+      // CHECK IS FILE DELETED
+      try {
+        await firstValueFrom(
+          this.fileServiceMS.GetFiles({
+            where: { _id },
+            limit: { limit: 1, skip: 0 },
+          }),
+        );
+      } catch (error: any) {
+        if (error.message === 'no elements in sequence') {
+          console.log('FILE IS DELETED', _id);
+          channel.reject(data, false);
+          return;
+        }
+      }
 
       const account = await firstValueFrom(
         this.accountServiceMS.PickBySize({ value: size.toString() }),
@@ -141,37 +153,6 @@ export class AppService implements OnModuleInit {
       );
 
       console.log('file_part_upload sucess', file_part);
-
-      channel.ack(data);
-    });
-  }
-
-  async forgot_password_mail() {
-    const queue = Queues.SEND_FORGOT_PASSWORD_EMAIL;
-    const channel = await this.rabbitmqClient.createChannel();
-    await channel.assertQueue(queue);
-    channel.prefetch(1);
-
-    channel.consume(queue, async (data) => {
-      console.log('consume forgot_password_mail');
-      const { id, code, email } = ForgotPasswordMail.decode(
-        data.content,
-      ) as unknown as ForgotPasswordMail__Output;
-
-      const encoded_code = generateEncodedVerifyCode(id, code, SECRET);
-
-      console.log(id, email, code, encoded_code);
-
-      // const info = await this.transporter.sendMail({
-      //   from: MAIL_USER,
-      //   to: email,
-      //   subject: 'Forgot Password',
-      //   text: 'query: ' + encoded_code,
-      // });
-
-      // console.log('Message sent: %s', info.messageId);
-
-      // console.log('forgot_password_mail success', info);
 
       channel.ack(data);
     });

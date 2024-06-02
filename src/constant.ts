@@ -24,9 +24,6 @@ export const FILE_PROTO_PATH = path.resolve('./proto/file.proto');
 
 const queue_root = protobufjs.loadSync(QUEUE_PROTO_PATH);
 export const FilePartUpload = queue_root.lookupType('queue.FilePartUpload');
-export const ForgotPasswordMail = queue_root.lookupType(
-  'queue.ForgotPasswordMail',
-);
 
 const file_root = protobufjs.loadSync(FILE_PROTO_PATH);
 export const FilePart = file_root.lookupType('file.FilePart');
