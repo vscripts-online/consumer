@@ -73,7 +73,7 @@ export class AppService implements OnModuleInit {
         enums: String,
       }) as FilePartUpload__Output;
 
-      const { name, offset, size, _id } = object;
+      const { name, offset, size, _id, last } = object;
       console.log(_id);
 
       // CHECK IS FILE DELETED
@@ -152,7 +152,24 @@ export class AppService implements OnModuleInit {
         }),
       );
 
-      console.log('file_part_upload sucess', file_part);
+      if (!file_part.value) {
+        console.log('file_part_upload failed');
+        this.file_delete({
+          id: file_id,
+          name,
+          offset,
+          owner: account._id,
+          size,
+        });
+      }
+
+      file_part.value && console.log('file_part_upload success');
+
+      if (last) {
+        try {
+          await client.delete(`upload/file/${_id}`);
+        } catch (error) {}
+      }
 
       channel.ack(data);
     });
@@ -173,26 +190,34 @@ export class AppService implements OnModuleInit {
         enums: String,
       }) as FilePart__Output;
 
-      const { name, offset, size, id, owner } = object;
-
-      const deleted = await firstValueFrom(
-        this.fileServiceMS.DeleteFileFromStorage({
-          id,
-          name,
-          offset,
-          owner,
-          size,
-        }),
-      );
-
-      if (!deleted.value) {
+      try {
+        this.file_delete(object);
+        channel.ack(data);
+      } catch (error) {
         channel.reject(data, true);
-        return;
       }
-
-      console.log('delete_file success', deleted);
-
-      channel.ack(data);
     });
+  }
+
+  private async file_delete(object: FilePart__Output) {
+    const { name, offset, size, id, owner } = object;
+
+    const deleted = await firstValueFrom(
+      this.fileServiceMS.DeleteFileFromStorage({
+        id,
+        name,
+        offset,
+        owner,
+        size,
+      }),
+    );
+
+    if (!deleted.value) {
+      throw new Error('Could not deleted');
+    }
+
+    console.log('file_delete success');
+
+    return true;
   }
 }
