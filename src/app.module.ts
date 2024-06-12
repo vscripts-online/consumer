@@ -1,5 +1,6 @@
-import * as amqp from 'amqplib';
 import { Module } from '@nestjs/common';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import * as amqp from 'amqplib';
 import { AppService } from './app.service';
 import {
   FILE_MS_CLIENT,
@@ -8,7 +9,6 @@ import {
   RABBITMQ_CLIENT,
   RABBITMQ_URI,
 } from './constant';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [

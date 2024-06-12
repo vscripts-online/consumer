@@ -3,6 +3,7 @@ import { Metadata } from '@grpc/grpc-js';
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
 import type * as amqp from 'amqplib';
+import { HTTPError } from 'got';
 import * as nodemailer from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { AccountServiceHandlers } from 'pb/account/AccountService';
@@ -74,22 +75,19 @@ export class AppService implements OnModuleInit {
       }) as FilePartUpload__Output;
 
       const { name, offset, size, _id, last } = object;
-      console.log(_id);
 
       // CHECK IS FILE DELETED
-      try {
-        await firstValueFrom(
-          this.fileServiceMS.GetFiles({
-            where: { _id },
-            limit: { limit: 1, skip: 0 },
-          }),
-        );
-      } catch (error: any) {
-        if (error.message === 'no elements in sequence') {
-          console.log('FILE IS DELETED', _id);
-          channel.reject(data, false);
-          return;
-        }
+      const { files } = await firstValueFrom(
+        this.fileServiceMS.GetFiles({
+          where: { _id },
+          limit: { limit: 1, skip: 0 },
+        }),
+      );
+
+      if (files?.length === 0) {
+        console.log('FILE IS DELETED', _id);
+        channel.reject(data, false);
+        return;
       }
 
       const account = await firstValueFrom(
@@ -119,10 +117,23 @@ export class AppService implements OnModuleInit {
       server_file_stream.on('end', () => grpc_request.complete());
 
       server_file_stream.on('error', async (err) => {
-        console.log('filestream error', err);
+        const not_found =
+          err instanceof HTTPError &&
+          err.message === 'Response code 404 (Not Found)';
+
         await firstValueFrom(
           this.accountServiceMS.IncreaseSize({ _id: account._id, size }),
         );
+
+        if (not_found) {
+          // await firstValueFrom(this.queueServiceMS.DeleteFile({ value: _id }));
+          // console.log(_id, 'deleted');
+          console.log('Real file not found');
+          channel.reject(data, false);
+          return;
+        }
+
+        console.log('filestream error', err);
         channel.reject(data, true);
         return;
       });
